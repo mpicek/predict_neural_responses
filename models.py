@@ -103,7 +103,7 @@ class AntolikHouska_HSM_model(encoding_model):
     """Model based on Antolik 2016"""
 
     def __init__(self, config):
-        super().__init__()
+        super().__init__(config)
         self.config = config
         self.loss = PoissonLoss()
         self.corr = Corr()
@@ -146,7 +146,7 @@ class GLM(encoding_model):
     """
 
     def __init__(self, config):
-        super().__init__()
+        super().__init__(config)
         self.config = config
         self.input_size = config["input_size_x"] * config["input_size_y"]
         self.output_size = config["num_neurons"]
