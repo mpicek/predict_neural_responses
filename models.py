@@ -1,4 +1,4 @@
-from dog_layer import dog_layer
+from custom_layers import dog_layer
 import numpy as np
 import dnn_blocks as bl
 import torch.nn as nn
