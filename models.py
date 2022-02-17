@@ -1,6 +1,8 @@
+#%%
+import weakref
 from custom_layers import dog_layer
 import numpy as np
-import dnn_blocks as bl
+import dnn_blocks.dnn_blocks as bl
 import torch.nn as nn
 import pytorch_lightning as pl
 import torch
@@ -8,6 +10,7 @@ from neuralpredictors.measures.modules import Corr, PoissonLoss
 from neuralpredictors.regularizers import laplace, laplace5x5, laplace7x7
 import neuralpredictors.layers.cores as cores
 import neuralpredictors.layers.readouts as readouts
+from neuralpredictors.layers.activations import PiecewiseLinearExpNonlinearity
 
 
 class encoding_model(pl.LightningModule):
@@ -83,6 +86,7 @@ class CNN_SxF(encoding_model):
             mean_activity=self.config["mean_activity"],
             gamma_readout=self.config["readout_gamma"],
         )
+        self.register_buffer("laplace", torch.from_numpy(laplace))
         self.nonlin = bl.act_func()["softplus"]
 
     def forward(self, x):
@@ -90,13 +94,68 @@ class CNN_SxF(encoding_model):
         x = self.nonlin(self.readout(x))
         return x
 
+    def reg_readout_spatial_smoothness(self):
+        nw = self.readout.normalized_spatial()
+        reg_term = torch.sqrt(
+            torch.sum(
+                torch.pow(
+                    nn.functional.conv2d(
+                        nw.reshape(
+                            self.config["num_neurons"],
+                            1,
+                            self.config["input_size_x"],
+                            self.config["input_size_y"],
+                        ),
+                        self.laplace,
+                        padding="same",
+                    ),
+                    2,
+                )
+            )
+        )
+        reg_term = self.config["reg_readout_spatial_smoothness"] * reg_term
+        return reg_term
+
+    def reg_readout_group_sparsity(self):
+        nw = self.readout.normalized_spatial().reshape(self.config["num_neurons"], -1)
+        reg_term = self.config["reg_group_sparsity"] * torch.sum(
+            torch.sqrt(torch.sum(torch.pow(nw, 2), dim=-1)), 0
+        )
+        return reg_term
+
+    def reg_readout_spatial_sparsity(self):
+        # is this already enforced somehow?
+        nw = self.readout.normalized_spatial()
+        reg_term = self.config["reg_spatial_sparsity"] * torch.abs(nw).mean()
+        self.log("reg/readout_spatial_sparsity", reg_term)
+        return reg_term
+
     def regularization(self):
-        readout_reg = self.readout.regularizer(reduction="mean")
+        # readout
+        readout_l1_reg = self.readout.regularizer(reduction="mean")
+        self.log("reg/readout_l1_reg", readout_l1_reg)
+        readout_reg = 0
+        for k in self.config.keys():
+            if k.startswith("reg_readout"):
+                kreg = getattr(self, k)()
+                readout_reg = readout_reg + kreg
+        # core
         core_reg = self.core.regularizer()
         reg_term = readout_reg + core_reg
         self.log("reg/core reg", core_reg)
-        self.log("reg/readout_reg", readout_reg)
+        self.log("reg/readout_reg", readout_l1_reg)
         return reg_term
+
+
+class CNN_SxF_PiecewiseNonlin(CNN_SxF):
+    """model inspired by Cadena 2019, based on neuralpredictors conv core factorized readout and piecewise nonlin"""
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.nonlin = PiecewiseLinearExpNonlinearity(
+            self.config["num_neurons"]
+            # TODO add possible modification of parameters
+        )
 
 
 class AntolikHouska_HSM_model(encoding_model):
@@ -218,3 +277,5 @@ class GLM(encoding_model):
                 reg_term = reg_term + coeff_times_kreg
         return reg_term
 
+
+# %%

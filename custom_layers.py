@@ -1,7 +1,7 @@
 #%%
 import torch
 import torch.nn as nn
-import dnn_blocks as bl
+import dnn_blocks.dnn_blocks as bl
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -172,7 +172,7 @@ class dog_layer(nn.Module):
     def forward(self, x):
         dogs = self.compute_dog()
 
-        x = torch.tensordot(x.squeeze(), dogs, dims=((1, 2), (1, 2)))
+        x = torch.tensordot(x.squeeze(dim=1), dogs, dims=((1, 2), (1, 2)))
 
         if self.with_bias == True:
             x = x + self.bias
