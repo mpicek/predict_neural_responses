@@ -86,7 +86,7 @@ class CNN_SxF(encoding_model):
             mean_activity=self.config["mean_activity"],
             gamma_readout=self.config["readout_gamma"],
         )
-        self.register_buffer("laplace", torch.from_numpy(laplace))
+        self.register_buffer("laplace", torch.from_numpy(laplace()))
         self.nonlin = bl.act_func()["softplus"]
 
     def forward(self, x):
