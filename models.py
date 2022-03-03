@@ -16,7 +16,7 @@ from neuralpredictors.layers.activations import PiecewiseLinearExpNonlinearity
 class encoding_model(pl.LightningModule):
     """Parent class for system identification enconding models, keeps track of useful metrics"""
 
-    def __init__(self, config):
+    def __init__(self, **config):
         super().__init__()
         self.config = config
         self.loss = PoissonLoss()
