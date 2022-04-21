@@ -12,7 +12,6 @@ import neuralpredictors.layers.cores as cores
 import neuralpredictors.layers.readouts as readouts
 from neuralpredictors.layers.activations import PiecewiseLinearExpNonlinearity
 
-
 class encoding_model(pl.LightningModule):
     """Parent class for system identification enconding models, keeps track of useful metrics"""
 
@@ -58,11 +57,12 @@ class encoding_model(pl.LightningModule):
         return opt
 
 
+
 class CNN_SxF(encoding_model):
     """model inspired by Cadena 2019, based on neuralpredictors conv core and factorized readout"""
 
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, **config):
+        super().__init__(**config)
         self.core = cores.Stacked2dCore(
             input_channels=self.config["input_channels"],
             hidden_channels=self.config["core_hidden_channels"],
